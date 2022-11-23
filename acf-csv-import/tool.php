@@ -24,7 +24,7 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
 		// vars
 		$this->name = 'import-csv';
 		$this->title = __("Import Repeater Values from CSV", 'acf');
-    	$this->icon = 'dashicons-upload';
+    $this->icon = 'dashicons-upload';
 
 	}
 
@@ -47,43 +47,51 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
         $post = @$_GET['post'];
 
 		?>
-		<p><?php _e('Select the Repeater CSV file you would like to import. When you click the import button below, <b>ACF CSV Import</b> will import the field values based on the column names.', 'acf'); ?></p>
+		<p><?php _e('Select the Repeater CSV file you would like to import. When you click the import button below, <b>ACF CSV Import</b> will import the field values based on the column names.', 'acf-csv'); ?></p>
 		<div class="acf-fields">
 			<?php
 
-            acf_render_field_wrap(array(
-				'label'		=> __('Field', 'acf'),
-				'type'		=> 'select',
-                'wrapper'   => [
-                    'style' => is_string($field) ? "display:none;" : ""
-                ],
-				'name'		=> 'acf_field',
-				'value'		=> $field,
-                'choices'   => array_merge( ['' => 'Select Field'], get_transient('acf_csv_repeaters') )
-			));
+          acf_render_field_wrap(array(
+            'label'   => __('Field', 'acf-csv'),
+            'type'    => 'select',
+            'wrapper'   => [
+                'style' => is_string($field) ? "display:none;" : ""
+            ],
+            'name'    => 'acf_field',
+            'value'   => $field,
+                    'choices'   => array_merge( ['' => 'Select Field'], get_transient('acf_csv_repeaters') )
+          ));
 
-            acf_render_field_wrap(array(
-				'label'		=> __('Post ID', 'acf'),
-				'type'		=> 'text',
-                'wrapper'   => [
-                    'style' => is_string($post) ? "display:none;" : ""
-                ],
-				'name'		=> 'post_id',
-				'value'		=> $post
-			));
+          acf_render_field_wrap(array(
+            'label'   => __('Post ID', 'acf'),
+            'type'    => 'text',
+            'wrapper'   => [
+                'style' => is_string($post) ? "display:none;" : ""
+            ],
+            'name'    => 'post_id',
+            'value'   => $post
+          ));
 
-			acf_render_field_wrap(array(
-				'label'		=> __('Select CSV File', 'acf'),
-				'type'		=> 'file',
-				'name'		=> 'acf_import_file',
-				'value'		=> false,
-				'uploader'	=> 'basic',
-			));
+          acf_render_field_wrap(array(
+            'label'   => __('Delete existent rows?', 'acf-csv'),
+            'type'    => 'true_false',
+            'name'    => 'delete_ex_row',
+            'default_value' => 0,
+            'ui'      => 0,
+          ));
+
+          acf_render_field_wrap(array(
+            'label'   => __('Select CSV File', 'acf-csv'),
+            'type'    => 'file',
+            'name'    => 'acf_import_file',
+            'value'   => false,
+            'uploader' => 'basic',
+          ));
 
 			?>
 		</div>
 		<p class="acf-submit">
-			<input type="submit" class="button button-primary" value="<?php _e('Import File', 'acf'); ?>" />
+			<input type="submit" class="button button-primary" value="<?php _e('Import File', 'acf-csv'); ?>" />
 		</p>
 		<?php
 
@@ -109,7 +117,7 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
 
 		// Check file size.
 		if( empty($_FILES['acf_import_file']['size']) ) {
-			return acf_add_admin_notice( __("No file selected", 'acf'), 'warning' );
+			return acf_add_admin_notice( __("No file selected", 'acf-csv'), 'warning' );
 		}
 
 		// Get file data.
@@ -117,12 +125,12 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
 
 		// Check errors.
 		if( $file['error'] ) {
-			return acf_add_admin_notice( __("Error uploading file. Please try again", 'acf'), 'warning' );
+			return acf_add_admin_notice( __("Error uploading file. Please try again", 'acf-csv'), 'warning' );
 		}
 
 		// Check file type.
 		if( pathinfo($file['name'], PATHINFO_EXTENSION) !== 'csv' ) {
-			return acf_add_admin_notice( __("Incorrect file type", 'acf'), 'warning' );
+			return acf_add_admin_notice( __("Incorrect file type", 'acf-csv'), 'warning' );
 		}
 
 		// Read CSV.
@@ -131,14 +139,20 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
 
 		// Check if empty.
     	if( !$csv || !is_array($csv) ) {
-    		return acf_add_admin_notice( __("Import file empty", 'acf'), 'warning' );
+    		return acf_add_admin_notice( __("Import file empty", 'acf-csv'), 'warning' );
     	}
+
+
 
         $field_key = $_POST['acf_field'];
         $post_id = $_POST['post_id'];
+        $delete = $_POST['delete_ex_row'];
+        
+        // Delete previously populated rows
+        deleteRows($field_key, $post_id, $delete);
 
         if (empty($post_id)) {
-    		return acf_add_admin_notice( __("Post ID is invalid!", 'acf'), 'warning' );
+    		return acf_add_admin_notice( __("Post ID is invalid!", 'acf-csv'), 'warning' );
         }
 
         // Find header row and sanitize names
@@ -149,7 +163,7 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
         // Check if header row is accurate.
         // The check_header function will convert the header names into keys (row passed by reference)
     	if( !$head_row || !is_array($head_row) || !acf_csv()->check_header($head_row, $field_key, $post_id) ) {
-    		return acf_add_admin_notice( __("Header row does not corrospond to the repeater sub-fields.", 'acf'), 'warning' );
+    		return acf_add_admin_notice( __("Header row does not corrospond to the repeater sub-fields.", 'acf-csv'), 'warning' );
     	}
 
         // Loop rows
@@ -170,7 +184,7 @@ class ACF_Admin_Tool_CSV extends ACF_Admin_Tool {
 		$total = count($csv);
 
 		// Generate text.
-		$text = sprintf( _n( 'Imported 1 row', 'Imported %s rows', $total, 'acf' ), $total );
+		$text = sprintf( _n( 'Imported 1 row', 'Imported %s rows', $total, 'acf-csv' ), $total );
 
 		// Add notice
 		acf_add_admin_notice( $text, 'success' );

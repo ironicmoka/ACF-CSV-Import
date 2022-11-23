@@ -3,15 +3,15 @@
  * Plugin Name
  *
  * @package     ACF CSV Import
- * @author      Bryce Gough
+ * @author      Bryce Gough & Nicola Paroldo
  *
  * @wordpress-plugin
  * Plugin Name: ACF CSV Import
  * Description: Import ACF Repeater values from a CSV file.
- * Version:     1.3
- * Author: Bryce Gough
- * Author URI: https://freeform.com.au/
- * Text Domain: freeform
+ * Version:     1.4
+ * Author: Nicola Paroldo & Bryce Gough
+ * Author URI: https://github.com/ironicmoka/ACF-CSV-Import
+ * Text Domain: acf-csv
  */
 
 define('ACF_CSV', __DIR__);
@@ -74,7 +74,9 @@ class ACF_CSV {
         $edit_link = acf_get_admin_tool_url('import-csv');
         $edit_link .= '&acf_field=' . $field['key'];
         $edit_link .= '&post=' . $field['_acf_post_id'];
-        echo "<div style=\"margin-top: 8px;\" class=\"acf-actions\"><a class=\"acf-button button button-primary\" href=\"{$edit_link}\" data-event=\"import-csv\">Import Values from CSV</a></div>";
+        echo "<div style=\"margin-top: 8px;\" class=\"acf-actions\"><a class=\"acf-button button button-primary\" href=\"{$edit_link}\" data-event=\"import-csv\">";
+        _e('Importa da file CSV', 'acf-csv-import');
+        echo "</a></div>";
     }
 
     public function get_repeaters() {
@@ -106,3 +108,19 @@ add_action('acf/init', function() {
 });
    
 function acf_csv() { global $acf_csv; return $acf_csv; }
+
+
+// function to delete previously populated rows before import
+function deleteRows(string $field, $postID, $delete) {
+  if (1 == $delete) {
+    reset_rows();
+    $fieldValue = get_field($field, $postID);
+    if (is_array($fieldValue)){
+      $remainingRows = count($fieldValue);
+      while (have_rows($field, $postID)) :
+        the_row();
+        delete_row($field, $remainingRows--, $postID);
+      endwhile;
+    }
+  }
+}
